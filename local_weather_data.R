@@ -11,58 +11,72 @@ key
 install.packages("jsonlite")  # once
 library(jsonlite)
 
-city <- "Belmopan,bz"  # name,country-code
-url  <- paste0(
-  "https://api.openweathermap.org/data/2.5/weather",
-  "?q=", city,
-  "&units=imperial",
-  "&appid=", key
-)
+# city <- "Belmopan,bz"  # name,country-code
+# url  <- paste0(
+#   "https://api.openweathermap.org/data/2.5/weather",
+#   "?q=", city,
+#   "&units=imperial",
+#   "&appid=", key
+# )
+# 
+# 
+# j <- fromJSON(url)   # open the box (JSON → R list)
+# 
+# # make a tiny table
+# one_row <- data.frame(
+#   city = j$name,
+#   temp = j$main$temp,
+#   lon  = j$coord$lon,
+#   lat  = j$coord$lat
+# )
+# 
+# one_row
 
-j <- fromJSON(url)   # open the box (JSON → R list)
+library(jsonlite)
 
-# make a tiny table
-one_row <- data.frame(
-  city = j$name,
-  temp = j$main$temp,
-  lon  = j$coord$lon,
-  lat  = j$coord$lat
-)
-
-one_row
-
-
-#Many cities (baby loop)
+key <- Sys.getenv("OPENWEATHER_API_KEY")   # or "paste-your-key"
 
 cities <- c("Belmopan,bz", "Belize City,bz", "San Ignacio,bz")
 
-all_weather <- data.frame()
-
-for (c in cities) {
-  u <- paste0("https://api.openweathermap.org/data/2.5/weather",
-              "?q=", c, "&units=metric&appid=", key)
-  jj <- fromJSON(u)
-  row <- data.frame(
-    city = jj$name,
-    temp = jj$main$temp,
-    lon  = jj$coord$lon,
-    lat  = jj$coord$lat
+get_one <- function(city, units = "metric") {
+  url <- paste0(
+    "https://api.openweathermap.org/data/2.5/weather",
+    "?q=", URLencode(city),
+    "&units=", units,
+    "&appid=", key
   )
-  all_weather <- rbind(all_weather, row)   # add the row
+  j <- fromJSON(url)  # JSON → list
+  data.frame(
+    city = j$name,
+    temp = j$main$temp,
+    lon  = j$coord$lon,
+    lat  = j$coord$lat
+  )
 }
 
+# run for all cities and stack rows
+all_weather <- do.call(rbind, lapply(cities, get_one))
 all_weather
 
-all_weather$hot <- all_weather$temp >= 30   # TRUE if temp ≥ 30
-all_weather
+
+
 
 #Simplest plot(bar chart)
 barplot(
   all_weather$temp,
   names.arg = all_weather$city,
+  col = "dodgerblue",
+  border = "white",
+  ylim = c(0,max(all_weather$temp, na.rm = TRUE) +2),
   ylab = "°C",
   main = "Current Temperature"
 )
+
+
+all_weather$temp <- as.numeric(all_weather$temp)
+summary(all_weather$temp)
+
+
 
 #Print png
 png("weather_plot.png", width=800, height=600)
